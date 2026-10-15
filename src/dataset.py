@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 
-def create_dataset(data_path, files, target_per_class=1000):
+def create_dataset(data_path, files, target_per_class=7500):
     samples = []
 
     target_labels = {
