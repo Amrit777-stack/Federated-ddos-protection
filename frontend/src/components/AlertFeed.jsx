@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from 'react';
-import { ShieldAlert, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { ShieldAlert, ArrowUpRight, AlertCircle, Trash2 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { isAlertActive, isAlertMitigated, isAlertResolved } from '../services/api';
 import { formatEventTime, formatFullDateTime } from '../utils/time';
 
-export default function AlertFeed({ alerts = [], onSelectAlert, onViewAll }) {
+export default function AlertFeed({ alerts = [], onSelectAlert, onViewAll, onClearHistory }) {
   const isFirstRenderRef = useRef(true);
   const seenIdsRef = useRef(new Set());
 
@@ -26,15 +26,27 @@ export default function AlertFeed({ alerts = [], onSelectAlert, onViewAll }) {
             Ingress Threat Feed
           </h3>
         </div>
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="text-[11px] font-sans text-orange-400 hover:text-orange-300 flex items-center space-x-1 transition-colors duration-150"
-          >
-            <span>View All</span>
-            <ArrowUpRight className="w-3 h-3" />
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {onClearHistory && alerts.length > 0 && (
+            <button
+              onClick={onClearHistory}
+              className="px-2 py-0.5 rounded-sm bg-[#181818] hover:bg-[#222222] active:bg-[#151515] active:scale-[0.985] text-[#A3A3A3] hover:text-[#EDEDED] font-sans text-[11px] transition-all duration-180 ease-out border border-[#2E2E2E] flex items-center space-x-1"
+              title="Clear resolved incident history"
+            >
+              <Trash2 className="w-3 h-3 text-[#737373]" />
+              <span>Clear History</span>
+            </button>
+          )}
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="text-[11px] font-sans text-orange-400 hover:text-orange-300 flex items-center space-x-1 transition-colors duration-150"
+            >
+              <span>View All</span>
+              <ArrowUpRight className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[285px] pr-0.5">

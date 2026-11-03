@@ -622,7 +622,7 @@ export default function DetectionPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-[#101010] border-b border-[#262626] text-[#737373] font-sans text-[11px] z-10">
                     <tr>
-                      <th className="py-2 px-2.5 font-medium">Time</th>
+                      <th className="py-2 px-2.5 font-medium">Date & Time</th>
                       <th className="py-2 px-2.5 font-medium">Event</th>
                       <th className="py-2 px-2.5 font-medium">Node</th>
                       <th className="py-2 px-2.5 font-medium">Model Prediction</th>
@@ -741,7 +741,7 @@ export default function DetectionPage() {
                 <div className="space-y-2 font-sans text-xs">
                   {/* Flow Event Timestamp */}
                   <div className="p-2 rounded-sm bg-[#181818] border border-[#262626] text-[11px] font-mono flex items-center justify-between">
-                    <span className="text-[#737373]">Flow Timestamp</span>
+                    <span className="text-[#737373]">Recorded Date & Time</span>
                     <span className="text-[#EDEDED] font-semibold">{formatFullDateTime(selectedLiveEvent.timestamp, true)}</span>
                   </div>
 

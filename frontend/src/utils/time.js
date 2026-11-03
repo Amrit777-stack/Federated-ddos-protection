@@ -105,11 +105,19 @@ export function getClientTimeZoneName() {
  * @param {string|number|Date} timestamp 
  * @returns {string} e.g. "17:05:22" or "—"
  */
-export function formatEventTime(timestamp) {
+export function formatEventTime(timestamp, includeDate = true) {
   const d = parseDate(timestamp);
   if (!d) return '—';
   const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const h = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  const s = pad(d.getSeconds());
+  const timeStr = `${h}:${min}:${s}`;
+  if (!includeDate) return timeStr;
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  return `${y}-${m}-${day} ${timeStr}`;
 }
 
 /**

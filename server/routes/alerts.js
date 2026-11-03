@@ -5,6 +5,7 @@ const mlService = require('../services/mlService');
 
 let alertOverrides = {};
 const liveAlerts = [];
+let clearStaticHistory = false;
 
 // Register real-time alert listener from PyTorch live inference
 mlService.onAlertGenerated = (event) => {
@@ -85,6 +86,7 @@ mlService.onHistoryCleared = () => {
   // On Clear History/Reset, preserve ACTION REQUIRED and MITIGATED incidents.
   // ONLY clear old RESOLVED alerts.
   // Active alerts MUST remain active indefinitely until explicit user Mitigate or Restore.
+  clearStaticHistory = true;
   const preserved = liveAlerts.filter(a => {
     const overrideKey = Object.keys(alertOverrides).find(k => k.toLowerCase() === a.id.toLowerCase());
     const effectiveStatus = (overrideKey && alertOverrides[overrideKey].status) || a.status;
@@ -92,12 +94,19 @@ mlService.onHistoryCleared = () => {
   });
   liveAlerts.length = 0;
   liveAlerts.push(...preserved);
+
+  Object.keys(alertOverrides).forEach(key => {
+    if (alertOverrides[key]?.status === 'RESOLVED') {
+      delete alertOverrides[key];
+    }
+  });
+
   console.log('[Alerts] Live simulated history cleared. Preserved', preserved.length, 'active/mitigated incidents.');
 };
 
 router.get('/', (req, res) => {
   try {
-    const staticAlerts = dataService.getAlerts();
+    const staticAlerts = clearStaticHistory ? [] : dataService.getAlerts();
     const combined = [...liveAlerts, ...staticAlerts];
 
     const alerts = combined.map(alt => {
@@ -296,11 +305,44 @@ router.post(['/restore-enterprise/:enterpriseId', '/unblock-enterprise/:enterpri
   }
 });
 
+// Clear resolved / historical alerts while strictly preserving active & mitigated incidents
+router.post('/clear-history', (req, res) => {
+  try {
+    clearStaticHistory = true;
+    const preserved = liveAlerts.filter(a => {
+      const overrideKey = Object.keys(alertOverrides).find(k => k.toLowerCase() === a.id.toLowerCase());
+      const effectiveStatus = (overrideKey && alertOverrides[overrideKey].status) || a.status;
+      return effectiveStatus === 'ACTION REQUIRED' || effectiveStatus === 'MITIGATED · SIMULATION';
+    });
+    liveAlerts.length = 0;
+    liveAlerts.push(...preserved);
+
+    Object.keys(alertOverrides).forEach(key => {
+      if (alertOverrides[key]?.status === 'RESOLVED') {
+        delete alertOverrides[key];
+      }
+    });
+
+    if (mlService && typeof mlService.clearHistory === 'function') {
+      mlService.clearHistory().catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      message: 'Incident history cleared. Active and mitigated incidents preserved.',
+      remainingCount: liveAlerts.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear alert history', message: err.message });
+  }
+});
+
 // Reset all alert overrides (clean baseline)
 router.post('/reset-all', (req, res) => {
   try {
     alertOverrides = {};
     liveAlerts.length = 0;
+    clearStaticHistory = false;
     res.json({
       success: true,
       message: 'All alert overrides and live alerts cleared to default.'

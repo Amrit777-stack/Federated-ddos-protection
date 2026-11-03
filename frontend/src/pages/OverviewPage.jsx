@@ -31,7 +31,8 @@ import {
   getEnterpriseSecurityState,
   normalizeEnterpriseId,
   getOfflineEnterprises,
-  toggleEnterpriseStatus
+  toggleEnterpriseStatus,
+  clearAlertHistory
 } from '../services/api';
 import { Power } from 'lucide-react';
 import { parseDate, formatEventTime, formatFullDateTime } from '../utils/time';
@@ -159,6 +160,18 @@ export default function OverviewPage({ onNavigateTab }) {
       console.error('Quick mitigation error:', err);
     } finally {
       setMitigatingId(null);
+    }
+  };
+
+  const handleClearAlertsHistory = async () => {
+    try {
+      await clearAlertHistory();
+      const refreshed = await fetchAlerts().catch(() => null);
+      if (refreshed?.alerts) {
+        setAlerts(refreshed.alerts);
+      }
+    } catch (err) {
+      console.error('Quick clear alert history error:', err);
     }
   };
 
@@ -395,6 +408,7 @@ export default function OverviewPage({ onNavigateTab }) {
             alerts={alerts}
             onViewAll={() => onNavigateTab && onNavigateTab('alerts')}
             onSelectAlert={() => onNavigateTab && onNavigateTab('alerts')}
+            onClearHistory={handleClearAlertsHistory}
           />
         </div>
       </div>

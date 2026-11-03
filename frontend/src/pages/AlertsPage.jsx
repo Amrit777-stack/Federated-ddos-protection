@@ -7,7 +7,8 @@ import {
   AlertTriangle,
   Play,
   Filter,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { 
@@ -17,7 +18,8 @@ import {
   isAlertActive, 
   isAlertMitigated, 
   isAlertResolved, 
-  resetAlertSimulation 
+  resetAlertSimulation,
+  clearAlertHistory
 } from '../services/api';
 import { formatEventTime, formatFullDateTime } from '../utils/time';
 
@@ -89,6 +91,7 @@ export default function AlertsPage() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mitigating, setMitigating] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState('ALL');
 
   // Background polling loop to keep incident queue synchronized with live detected attacks & mitigations
@@ -238,6 +241,26 @@ export default function AlertsPage() {
     }
   };
 
+  const handleClearHistory = async () => {
+    try {
+      setClearingHistory(true);
+      await clearAlertHistory();
+      const res = await fetchAlerts();
+      const loadedAlerts = res.alerts || [];
+      setAlerts(loadedAlerts);
+      setSelectedAlert(prev => {
+        const activeAlert = loadedAlerts.find(a => isAlertActive(a));
+        const mitigatedAlert = loadedAlerts.find(a => isAlertMitigated(a));
+        const resolvedAlert = loadedAlerts.find(a => isAlertResolved(a));
+        return activeAlert || mitigatedAlert || resolvedAlert || loadedAlerts[0] || null;
+      });
+    } catch (err) {
+      console.error('Failed to clear incident history:', err);
+    } finally {
+      setClearingHistory(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[350px] font-sans text-[#737373] text-xs">
@@ -287,6 +310,17 @@ export default function AlertsPage() {
         </div>
 
         <div className="flex items-center space-x-2">
+          {alerts.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              disabled={clearingHistory}
+              className="px-2.5 py-1 rounded-sm bg-[#181818] hover:bg-[#222222] active:bg-[#151515] active:scale-[0.985] text-[#A3A3A3] hover:text-[#EDEDED] font-sans text-xs transition-all duration-180 ease-out border border-[#2E2E2E] flex items-center space-x-1.5 disabled:opacity-50"
+              title="Clear resolved incident history"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-[#737373]" />
+              <span>{clearingHistory ? 'Clearing...' : 'Clear History'}</span>
+            </button>
+          )}
           <span className="px-2.5 py-1 rounded-sm bg-[#181818] border border-[#262626] text-[#A3A3A3] font-mono text-xs">
             {alerts.length} Incidents Recorded
           </span>
@@ -328,7 +362,7 @@ export default function AlertsPage() {
             <table className="w-full text-left font-mono text-xs">
               <thead className="sticky top-0 bg-[#0D0D0D] border-b border-[#262626] text-[#737373] text-[11px] font-sans font-medium z-10">
                 <tr>
-                  <th className="py-2 px-2.5">Time</th>
+                  <th className="py-2 px-2.5">Date & Time</th>
                   <th className="py-2 px-2.5">Partition</th>
                   <th className="py-2 px-2.5">Threat Classification</th>
                   <th className="py-2 px-2.5">Severity</th>
@@ -397,7 +431,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Right Column: Alert Detail & Mitigation Runbook (1 col) */}
-        {selectedAlert && (
+        {selectedAlert ? (
           <div className="p-4 sm:p-5 rounded-sm bg-[#141414] border border-[#262626] flex flex-col justify-between">
             <div className="space-y-3.5">
               {/* Alert Header */}
@@ -417,7 +451,7 @@ export default function AlertsPage() {
               {/* Threat Details */}
               <div className="space-y-2 font-mono text-xs">
                 <div className="p-2.5 rounded-sm bg-[#0D0D0D] border border-[#262626] flex items-center justify-between">
-                  <span className="text-[#737373] text-[10px] block font-sans">Timestamp</span>
+                  <span className="text-[#737373] text-[10px] block font-sans">Recorded Date & Time</span>
                   <span className="text-xs font-mono text-orange-300">{formatFullDateTime(selectedAlert.timestamp, true)}</span>
                 </div>
 
@@ -556,12 +590,43 @@ export default function AlertsPage() {
               </div>
             </div>
 
-            {/* Bottom Meta Bar */}
-            <div className="mt-4 pt-2.5 border-t border-[#262626] text-[10px] font-mono text-[#737373] flex items-center justify-between">
-              <span>Incident ID: {selectedAlert.id}</span>
-              <span>
-                {isResolved ? 'Status: RESOLVED' : isMitigated ? 'Status: MITIGATED · SIMULATION' : 'Status: ACTION REQUIRED'}
-              </span>
+            {/* Bottom Meta Bar & Sidebar Actions */}
+            <div className="mt-4 pt-3 border-t border-[#262626] space-y-2.5">
+              <button
+                onClick={handleClearHistory}
+                disabled={clearingHistory}
+                className="w-full py-1.5 px-3 rounded-sm bg-[#181818] hover:bg-[#222222] active:bg-[#151515] active:scale-[0.985] text-[#A3A3A3] hover:text-[#EDEDED] font-sans text-xs transition-all duration-180 ease-out border border-[#2E2E2E] flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                title="Clear resolved incident history"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-[#737373]" />
+                <span>{clearingHistory ? 'Clearing History...' : 'Clear History'}</span>
+              </button>
+
+              <div className="text-[10px] font-mono text-[#737373] flex items-center justify-between">
+                <span>Incident ID: {selectedAlert.id}</span>
+                <span>
+                  {isResolved ? 'Status: RESOLVED' : isMitigated ? 'Status: MITIGATED · SIMULATION' : 'Status: ACTION REQUIRED'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-5 rounded-sm bg-[#141414] border border-[#262626] flex flex-col justify-between min-h-[350px]">
+            <div className="text-center py-12 text-[#737373] text-xs font-sans space-y-2">
+              <ShieldAlert className="w-8 h-8 text-[#3E3E3E] mx-auto" />
+              <p className="text-[#A3A3A3] font-medium">No Incident Selected</p>
+              <p className="text-[11px] text-[#525252]">Select an incident from the queue to view triage details.</p>
+            </div>
+            <div className="pt-3 border-t border-[#262626]">
+              <button
+                onClick={handleClearHistory}
+                disabled={clearingHistory}
+                className="w-full py-1.5 px-3 rounded-sm bg-[#181818] hover:bg-[#222222] active:bg-[#151515] active:scale-[0.985] text-[#A3A3A3] hover:text-[#EDEDED] font-sans text-xs transition-all duration-180 ease-out border border-[#2E2E2E] flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                title="Clear resolved incident history"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-[#737373]" />
+                <span>{clearingHistory ? 'Clearing History...' : 'Clear History'}</span>
+              </button>
             </div>
           </div>
         )}

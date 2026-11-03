@@ -1051,7 +1051,7 @@ export default function FewShotLabPage() {
                     </div>
 
                     <div className="flex justify-between font-mono text-[#EDEDED] text-[11px]">
-                      <span className="text-[#737373] font-sans">Detection Time:</span>
+                      <span className="text-[#737373] font-sans">Recorded Date & Time:</span>
                       <span className="text-[#A3A3A3]">{formatEventTime(displayFlow.timestamp)}</span>
                     </div>
                   </div>

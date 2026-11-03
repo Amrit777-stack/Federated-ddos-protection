@@ -708,6 +708,47 @@ export async function resetAlertSimulation(alertId) {
   }
 }
 
+export async function clearAlertHistory() {
+  // Clear only resolved overrides and resolved alerts from localStorage,
+  // strictly preserving any active ('ACTION REQUIRED') or mitigated ('MITIGATED · SIMULATION') alerts.
+  try {
+    const saved = JSON.parse(localStorage.getItem('sentinel_alert_overrides') || '{}');
+    Object.keys(saved).forEach(key => {
+      if (saved[key]?.status === 'RESOLVED') {
+        delete saved[key];
+      }
+    });
+    localStorage.setItem('sentinel_alert_overrides', JSON.stringify(saved));
+
+    const localActive = JSON.parse(localStorage.getItem('sentinel_active_injected_alerts') || '[]');
+    const preservedActive = localActive.filter(a => a && a.status !== 'RESOLVED' && a.mitigationStatus !== 'RESTORED');
+    localStorage.setItem('sentinel_active_injected_alerts', JSON.stringify(preservedActive));
+  } catch (err) {}
+
+  try {
+    const res = await fetch(`${API_BASE}/alerts/clear-history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (res.ok) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sentinel_alerts_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
+      return res.json();
+    }
+  } catch (err) {}
+
+  // Fallback to clearing live history
+  await clearLiveHistory().catch(() => {});
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('sentinel_alerts_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+  return { success: true };
+}
+
 export async function resetAllAlerts() {
   try {
     localStorage.removeItem('sentinel_alert_overrides');
